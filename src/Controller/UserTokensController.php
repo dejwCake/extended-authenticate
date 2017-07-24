@@ -33,7 +33,7 @@ class UserTokensController extends AppController
                     ->where(['user_id' => $user['id'],
                         'expiry_at >=' => (new DateTime())->format('Y-m-d H:i:s')
                     ])
-                    ->hydrate(false)
+                    ->enableHydration(false)
                     ->first();
                 if(!$userToken) {
                     $userToken = $this->UserTokens->newEntity();
@@ -50,7 +50,7 @@ class UserTokensController extends AppController
 
                 $this->RequestHandler->renderAs($this, 'json');
                 $token = $userToken['token'];
-                $this->response->statusCode(201);
+                $this->response->withStatus(201);
                 $this->set(compact('token'));
                 $this->set('_serialize', ['token']);
             } else {

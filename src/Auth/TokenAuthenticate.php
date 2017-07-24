@@ -5,9 +5,9 @@ namespace DejwCake\ExtendedAuthenticate\Controller;
 use Cake\Auth\BaseAuthenticate;
 use Cake\Controller\ComponentRegistry;
 use Cake\Core\Exception\Exception;
+use Cake\Http\Response;
+use Cake\Http\ServerRequest;
 use Cake\Network\Exception\HttpException;
-use Cake\Network\Request;
-use Cake\Network\Response;
 use Cake\ORM\TableRegistry;
 use DateTime;
 
@@ -34,12 +34,12 @@ class TokenAuthenticate extends BaseAuthenticate
      * @param \Cake\Controller\ComponentRegistry $registry The Component registry
      *   used on this request.
      * @param array $config Array of config to use.
-     * @throws Cake\Error\Exception If header is not present.
+     * @throws \Cake\Core\Exception\Exception If header is not present.
      */
     public function __construct(ComponentRegistry $registry, $config)
     {
         $this->_registry = $registry;
-        $this->config([
+        $this->setConfig([
             'header' => 'authorization',
             'prefix' => 'bearer',
             'parameter' => 'token',
@@ -48,7 +48,7 @@ class TokenAuthenticate extends BaseAuthenticate
             'unauthenticatedException' => '\Cake\Network\Exception\UnauthorizedException',
             'tokenModel' => 'UserToken',
         ]);
-        $this->config($config);
+        $this->setConfig($config);
         if (empty($this->_config['parameter']) &&
             empty($this->_config['header'])
         ) {
@@ -62,12 +62,11 @@ class TokenAuthenticate extends BaseAuthenticate
     /**
      * Get user record based on info available in JWT.
      *
-     * @param \Cake\Network\Request $request The request object.
-     * @param \Cake\Network\Response $response Response object.
-     *
-     * @return bool|array User record array or false on failure.
+     * @param ServerRequest $request The request object.
+     * @param Response $response Response object.
+     * @return array|bool User record array or false on failure.
      */
-    public function authenticate(Request $request, Response $response)
+    public function authenticate(ServerRequest $request, Response $response)
     {
         return $this->getUser($request);
     }
@@ -75,12 +74,11 @@ class TokenAuthenticate extends BaseAuthenticate
     /**
      * If unauthenticated, try to authenticate and respond.
      *
-     * @param Request $request The request object.
+     * @param ServerRequest $request The request object.
      * @param Response $response The response object.
      * @return bool False on failure, user on success.
-     * @throws HttpException Or the one specified using $settings['unauthorized'].
      */
-    public function unauthenticated(Request $request, Response $response)
+    public function unauthenticated(ServerRequest $request, Response $response)
     {
         if ($this->_config['continue']) {
             return false;
@@ -97,21 +95,21 @@ class TokenAuthenticate extends BaseAuthenticate
     /**
      * Get token information from the request.
      *
-     * @param Request $request Request object.
+     * @param ServerRequest $request Request object.
      * @return mixed Either false or an array of user information
      */
-    public function getUser(Request $request)
+    public function getUser(ServerRequest $request)
     {
         if (!empty($this->_config['header'])) {
-            $token = $request->header($this->_config['header']);
+            $token = $request->getHeader($this->_config['header']);
             if ($token) {
                 return $this->_findUser($token);
             }
         }
         if (!empty($this->_config['parameter']) &&
-            !empty($request->query[$this->_config['parameter']])
+            !empty($request->getQueryParams([$this->_config['parameter']]))
         ) {
-            $token = $request->query[$this->_config['parameter']];
+            $token = $request->getQueryParams([$this->_config['parameter']]);
             return $this->_findUser($token);
         }
         return false;
@@ -137,7 +135,7 @@ class TokenAuthenticate extends BaseAuthenticate
         $tableToken = TableRegistry::get($tokenModel)->find('all');
         $result = $tableToken
             ->where($conditions)
-            ->hydrate(false)
+            ->enableHydration(false)
             ->first();
         if (empty($result)) {
             return false;
@@ -154,7 +152,7 @@ class TokenAuthenticate extends BaseAuthenticate
         }
         $result = $tableUser
             ->where($conditions)
-            ->hydrate(false)
+            ->enableHydration(false)
             ->first();
         if (empty($result)) {
             return false;

@@ -34,9 +34,9 @@ class UserTokensTable extends Table
     {
         parent::initialize($config);
 
-        $this->table('user_tokens');
-        $this->displayField('id');
-        $this->primaryKey('id');
+        $this->setTable('user_tokens');
+        $this->setDisplayField('id');
+        $this->setPrimaryKey('id');
 
         $this->addBehavior('Timestamp');
     }
