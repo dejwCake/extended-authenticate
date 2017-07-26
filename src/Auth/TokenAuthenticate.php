@@ -1,6 +1,6 @@
 <?php
 
-namespace DejwCake\ExtendedAuthenticate\Controller;
+namespace DejwCake\ExtendedAuthenticate\Auth;
 
 use Cake\Auth\BaseAuthenticate;
 use Cake\Controller\ComponentRegistry;
@@ -13,6 +13,13 @@ use DateTime;
 
 class TokenAuthenticate extends BaseAuthenticate
 {
+
+    /**
+     * Parsed token.
+     *
+     * @var string|null
+     */
+    protected $_token;
 
     /**
      * Constructor.
@@ -46,7 +53,7 @@ class TokenAuthenticate extends BaseAuthenticate
             'fields' => ['token' => 'token', 'password' => 'password', 'expiry_at' => 'expiry_at'],
             'continue' => false,
             'unauthenticatedException' => '\Cake\Network\Exception\UnauthorizedException',
-            'tokenModel' => 'UserToken',
+            'tokenModel' => 'DejwCake/ExtendedAuthenticate.UserTokens',
         ]);
         $this->setConfig($config);
         if (empty($this->_config['parameter']) &&
@@ -93,6 +100,30 @@ class TokenAuthenticate extends BaseAuthenticate
     }
 
     /**
+     * Get token from header or query string.
+     *
+     * @param ServerRequest|null $request Request object.
+     * @return null|string Token string if found else null.
+     */
+    public function getToken(ServerRequest $request = null)
+    {
+        $config = $this->_config;
+        if (!$request) {
+            return $this->_token;
+        }
+        $header = $request->getHeaderLine($config['header']);
+        if ($header && stripos($header, $config['prefix']) === 0) {
+            return $this->_token = str_ireplace($config['prefix'] . ' ', '', $header);
+        }
+        if (!empty($this->_config['parameter']) &&
+            !empty($request->getQuery($this->_config['parameter']))
+        ) {
+            $this->_token = $request->getQuery($this->_config['parameter']);
+        }
+        return $this->_token;
+    }
+
+    /**
      * Get token information from the request.
      *
      * @param ServerRequest $request Request object.
@@ -100,16 +131,7 @@ class TokenAuthenticate extends BaseAuthenticate
      */
     public function getUser(ServerRequest $request)
     {
-        if (!empty($this->_config['header'])) {
-            $token = $request->getHeader($this->_config['header']);
-            if ($token) {
-                return $this->_findUser($token);
-            }
-        }
-        if (!empty($this->_config['parameter']) &&
-            !empty($request->getQueryParams([$this->_config['parameter']]))
-        ) {
-            $token = $request->getQueryParams([$this->_config['parameter']]);
+        if ($token = $this->getToken($request)) {
             return $this->_findUser($token);
         }
         return false;
